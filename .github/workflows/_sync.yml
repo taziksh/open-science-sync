@@ -57,6 +57,7 @@ jobs:
       - name: Record status
         if: always()
         run: |
+          mkdir -p status
           head=$(curl -fsSL "https://huggingface.co/api/datasets/${{ inputs.repo }}/revision/main" | python3 -c "import json,sys; print(json.load(sys.stdin)['sha'])" || echo unknown)
           cat > "status/${{ inputs.name }}.json" <<JSON
           {"dataset": "${{ inputs.repo }}", "result": "${{ steps.update.outcome }}", "finished_utc": "$(date -u +%Y-%m-%dT%H:%M:%SZ)", "hf_revision": "$head", "run": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}
