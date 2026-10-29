@@ -1,0 +1,22 @@
+name: argo-profiles
+on:
+  schedule:
+    - cron: "17 6 * * 1" # Mondays; closed-shard revisions only on the first Monday of the month
+  workflow_dispatch:
+concurrency:
+  group: argo-profiles
+  cancel-in-progress: false
+jobs:
+  sync:
+    permissions:
+      contents: write
+    uses: ./.github/workflows/_sync.yml
+    with:
+      name: argo-profiles
+      repo: taziksh/argo-profiles
+      command: |
+        if [ "$(date -u +%d)" -le 7 ]; then DEFER=""; else DEFER="--defer-closed"; fi
+        uv run build.py update --push --repo-id taziksh/argo-profiles --work-dir "$RUNNER_TEMP" --max-fetch 150000 $DEFER
+      timeout: 350
+    secrets:
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}

@@ -7,6 +7,7 @@ Scheduled jobs that keep these Hugging Face datasets in sync with their sources:
 | [taziksh/usgs-earthquakes](https://huggingface.co/datasets/taziksh/usgs-earthquakes) | USGS ComCat | daily 06:17 |
 | [taziksh/ibtracs](https://huggingface.co/datasets/taziksh/ibtracs) | NOAA NCEI IBTrACS v04r01 | Mon/Wed/Fri 12:00 |
 | [taziksh/frus](https://huggingface.co/datasets/taziksh/frus) | HistoryAtState/frus | Mondays 09:17 |
+| [taziksh/argo-profiles](https://huggingface.co/datasets/taziksh/argo-profiles) | Argo GDAC core profiles | Mondays 06:17 (older half-years monthly) |
 | [taziksh/itrdb-tree-rings](https://huggingface.co/datasets/taziksh/itrdb-tree-rings) | NOAA NCEI ITRDB | 3rd of each month 09:17 |
 
 Static, no sync: [taziksh/cliwoc](https://huggingface.co/datasets/taziksh/cliwoc).
