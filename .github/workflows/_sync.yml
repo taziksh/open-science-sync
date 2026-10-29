@@ -1,0 +1,68 @@
+# Shared sync job. Each dataset's build.py lives in its HF dataset repo; this
+# downloads it, runs its update (which pushes only changed files to HF), tags
+# the HF repo once a month, and records the result in status/<name>.json.
+# Committing that status file also keeps GitHub from disabling the schedules
+# after 60 days without repo activity.
+name: _sync
+on:
+  workflow_call:
+    inputs:
+      name: {required: true, type: string}
+      repo: {required: true, type: string}
+      command: {required: true, type: string}
+      timeout: {required: false, type: number, default: 120}
+    secrets:
+      HF_TOKEN: {required: true}
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ inputs.timeout }}
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+
+      - name: Fetch build.py from ${{ inputs.repo }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/ds"
+          curl -fsSL "https://huggingface.co/datasets/${{ inputs.repo }}/resolve/main/build.py" -o "$RUNNER_TEMP/ds/build.py"
+
+      - name: Update
+        id: update
+        working-directory: ${{ runner.temp }}/ds
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_REPO_ID: ${{ inputs.repo }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: ${{ inputs.command }}
+
+      - name: Monthly tag
+        if: success()
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          uv run --no-project --with huggingface_hub python - <<'PY'
+          import datetime as dt
+          from huggingface_hub import HfApi
+          api, repo = HfApi(), "${{ inputs.repo }}"
+          tag = dt.date.today().strftime("%Y-%m")
+          refs = api.list_repo_refs(repo, repo_type="dataset")
+          if tag not in {t.name for t in refs.tags}:
+              api.create_tag(repo, tag=tag, repo_type="dataset", tag_message=f"Snapshot {tag}")
+              print("created tag", tag)
+          PY
+
+      - name: Record status
+        if: always()
+        run: |
+          head=$(curl -fsSL "https://huggingface.co/api/datasets/${{ inputs.repo }}/revision/main" | python3 -c "import json,sys; print(json.load(sys.stdin)['sha'])" || echo unknown)
+          cat > "status/${{ inputs.name }}.json" <<JSON
+          {"dataset": "${{ inputs.repo }}", "result": "${{ steps.update.outcome }}", "finished_utc": "$(date -u +%Y-%m-%dT%H:%M:%SZ)", "hf_revision": "$head", "run": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}
+          JSON
+          git config user.name "open-science-sync"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "status/${{ inputs.name }}.json"
+          git commit -m "status: ${{ inputs.name }} ${{ steps.update.outcome }}" || exit 0
+          for i in 1 2 3 4 5; do git pull --rebase -q && git push -q && break; sleep $((i * 5)); done

@@ -1,0 +1,18 @@
+name: usgs-earthquakes
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+concurrency:
+  group: usgs-earthquakes
+  cancel-in-progress: false
+jobs:
+  sync:
+    uses: ./.github/workflows/_sync.yml
+    with:
+      name: usgs-earthquakes
+      repo: taziksh/usgs-earthquakes
+      command: uv run build.py update --root .
+      timeout: 120
+    secrets:
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
