@@ -8,6 +8,8 @@ concurrency:
   cancel-in-progress: false
 jobs:
   sync:
+    permissions:
+      contents: write
     uses: ./.github/workflows/_sync.yml
     with:
       name: usgs-earthquakes
